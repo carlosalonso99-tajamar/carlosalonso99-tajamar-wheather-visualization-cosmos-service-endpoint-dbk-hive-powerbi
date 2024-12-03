@@ -109,6 +109,8 @@ Este README proporciona una guía paso a paso para configurar una arquitectura q
 1. En Power BI, carga la tabla (`powerbitable`) y empieza a crear **visualizaciones** interactivas de los datos meteorológicos.
 2. Dedica tiempo a experimentar con diferentes **gráficos** y **plots** para entender mejor los datos.
 
+![Dashboard](image-1.png)
+
 ### 7. Consideraciones Finales
 
 - **Seguridad**: Asegúrate de eliminar las **claves sensibles** del código y utiliza archivos `.env` para proteger las credenciales.
