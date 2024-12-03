@@ -111,6 +111,8 @@ Este README proporciona una guía paso a paso para configurar una arquitectura q
 
 ![Dashboard](image-1.png)
 
+[Dashboard](weather_dashboard_madrid.pbit)
+
 ### 7. Consideraciones Finales
 
 - **Seguridad**: Asegúrate de eliminar las **claves sensibles** del código y utiliza archivos `.env` para proteger las credenciales.
