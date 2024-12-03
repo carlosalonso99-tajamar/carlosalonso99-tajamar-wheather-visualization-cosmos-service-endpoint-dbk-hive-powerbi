@@ -1,70 +1,123 @@
-# Arquitectura de Integración: Azure Cosmos DB, Databricks y Power BI
+# Guía de Implementación: Azure Cosmos DB, Databricks y Power BI
 
-Este documento describe la arquitectura de integración entre Azure Cosmos DB, Azure Databricks y Power BI. La implementación se realiza utilizando servicios en Azure para capturar, procesar y visualizar datos de forma eficiente y segura.
+Este README proporciona una guía paso a paso para configurar una arquitectura que integra **Azure Cosmos DB (API para MongoDB)**, **Azure Databricks** y **Power BI**. Este proyecto permite capturar datos meteorológicos, procesarlos y visualizarlos de manera eficiente usando servicios de Azure.
 
 ## Descripción General de la Arquitectura
+![Arquitectura](image.png)
+- **Azure Cosmos DB** se utiliza para almacenar los datos meteorológicos. Utilizamos la API para MongoDB para la interoperabilidad con Databricks.
+- **Azure Databricks** procesa los datos almacenados en Cosmos DB mediante Apache Spark y permite integrarlos con Power BI.
+- **Power BI** se utiliza para visualizar los datos procesados, permitiendo la creación de informes y dashboards interactivos.
+- **Virtual Network (VNet)** y **Service Endpoint** se configuran para garantizar una comunicación segura entre los servicios.
 
-La arquitectura consiste en la integración de los siguientes componentes principales:
+## Pasos para la Implementación
+[Tutorial guiado con capturas](CosmosDB.pdf)
 
-- **Azure Cosmos DB**: Base de datos NoSQL utilizada para almacenar datos de origen, que en este caso son datos meteorológicos obtenidos a través de la API de OpenWeather.
-- **Azure Databricks**: Plataforma de procesamiento de datos que utiliza Apache Spark para realizar transformaciones y procesamiento en los datos almacenados en Cosmos DB.
-- **Power BI**: Herramienta de visualización de datos que permite generar informes y dashboards interactivos con los datos procesados en Databricks.
-- **Virtual Network (VNet)**: Proporciona una red segura y aislada para los servicios de Azure, asegurando la comunicación privada entre Cosmos DB y Databricks.
-- **Service Endpoint**: Conexión directa y segura entre la red virtual y Azure Cosmos DB, eliminando la necesidad de exponer datos a través de Internet.
+### 1. Creación de Recursos de Azure
 
-## Componentes de la Arquitectura
+1. **Crear el Grupo de Recursos** en Azure para organizar los componentes del proyecto.
 
-### 1. Azure Cosmos DB (API para MongoDB)
-Azure Cosmos DB actúa como la base de datos principal para almacenar datos meteorológicos capturados por un script de Python. Utilizamos la API de MongoDB para facilitar la integración con Azure Databricks.
+2. **Crear Azure Cosmos DB**:
+   - Selecciona **Azure Cosmos DB for MongoDB** y elige la opción **Serverless**.
+   - En la configuración de la base de datos, selecciona "**Request unit - RU**" y deja el resto de las opciones por defecto.
+   - Después del despliegue, ve a **Data Explorer** y crea una nueva **Base de Datos** y una **Colección**.
 
-- **Tipo de Implementación**: Serverless.
-- **Propósito**: Almacenar datos de manera escalable y con baja latencia.
+3. **Crear Virtual Network (VNet)**:
+   - En el buscador de Azure escribe **Virtual Networks** y haz clic en **Create**.
+   - Deja las configuraciones por defecto y crea la VNet.
+   - Añade una subred para los servicios de Databricks.
 
-### 2. Azure Databricks
-Azure Databricks se encarga del procesamiento de datos utilizando Apache Spark. Los datos almacenados en Cosmos DB son transformados y procesados para su posterior visualización.
+### 2. Creación de Azure Databricks
 
-- **Configuración del Clúster**: Se configura un clúster de nodo único (Single Node) para realizar operaciones locales.
-- **Conectores**: Se instala el conector oficial de Spark para MongoDB, permitiendo que Spark lea y escriba datos en Cosmos DB.
-- **Metastore de Hive**: Los datos procesados se almacenan en un metastore de Hive, lo cual facilita la consulta desde Power BI.
+1. **Crear un Recurso de Azure Databricks**:
+   - En **Pricing Tier**, selecciona **Premium** para poder utilizar la integración con Power BI.
+   - En **Networking**, selecciona "**Yes**" para asociarlo a la VNet creada previamente.
 
-### 3. Power BI
-Power BI se utiliza para la visualización de los datos procesados. Los datos almacenados en el metastore de Hive están disponibles para ser consultados y visualizados mediante dashboards interactivos.
+2. **Crear un Service Endpoint para Cosmos DB**:
+   - Dentro de la VNet, selecciona la subred y habilita el **Service Endpoint** para **Microsoft.AzureCosmosDB**.
 
-- **Integración con Databricks**: Utiliza **Partner Connect** para conectarse directamente con Azure Databricks y acceder a los datos procesados.
+3. **Lanzar el Workspace de Databricks** y crear un clúster:
+   - Crea un clúster de tipo **Single Node**.
+   - En las **Advanced Options**, configura Spark con los siguientes parámetros:
+     ```
+     spark.master local[*, 4]
+     spark.databricks.cluster.profile singleNode
+     spark.mongodb.output.uri=<URI_de_salida_para_CosmosDB>
+     spark.mongodb.input.uri=<URI_de_entrada_para_CosmosDB>
+     ```
 
-### 4. Virtual Network (VNet)
-La VNet proporciona un entorno seguro y aislado para los recursos de Azure. Los recursos, como Azure Databricks y Cosmos DB, se comunican dentro de esta red, garantizando la privacidad del tráfico de datos.
+4. **Instalar Conector de Spark para MongoDB**:
+   - Ve a la pestaña **Libraries** y haz clic en **Install New**.
+   - Selecciona **Maven** y busca el paquete oficial de **mongo-spark connector**.
 
-### 5. Service Endpoint
-Un Service Endpoint se utiliza para conectar la VNet con Azure Cosmos DB. Esto permite una conexión segura y directa, eliminando la necesidad de una IP pública para el acceso a Cosmos DB.
+### 3. Captura de Datos Meteorológicos
 
-## Flujo de Datos en la Arquitectura
-1. **Captura de Datos**: Un script de Python obtiene datos meteorológicos de la API de OpenWeather y los almacena en Azure Cosmos DB.
-2. **Procesamiento de Datos**: Azure Databricks recupera los datos desde Cosmos DB, los procesa y los transforma utilizando Apache Spark.
-3. **Almacenamiento de Datos Procesados**: Los datos transformados se registran en el Hive Metastore, lo cual permite su acceso mediante SQL.
-4. **Visualización**: Power BI se conecta a Azure Databricks a través de Partner Connect, accede a los datos procesados y genera informes interactivos.
+1. **Registrarse en OpenWeather** y obtener una **API Key**.
+2. Configura el script `weather_to_cosmodb.py`:
+   - Reemplaza la `API_KEY` con la clave obtenida de OpenWeather.
+   - Pega la **PRIMARY CONNECTION STRING** de Cosmos DB en el script y reemplaza `DB_NAME` y `COLLECTION_NAME` con los nombres correctos.
+3. **Ejecutar el Script** para capturar y almacenar datos cada 20 segundos en Cosmos DB.
+   - Para detener la captura de datos, usa `CTRL + C` en el terminal.
 
-## Ventajas de la Arquitectura
-- **Escalabilidad**: Cosmos DB y Databricks permiten manejar grandes volúmenes de datos de forma eficiente y escalable.
-- **Seguridad**: La VNet y el Service Endpoint aseguran que la comunicación entre servicios se mantenga privada y segura.
-- **Facilidad de Visualización**: Power BI proporciona una forma rápida y eficaz de analizar y presentar los datos transformados.
+### 4. Creación del Entorno y Configuración de la Aplicación
 
-## Configuración del Clúster en Azure Databricks
-En las **Advanced Options** del clúster en Databricks, se configuraron las siguientes opciones para permitir la conexión con Cosmos DB. Por favor, rellena las variables con la información correspondiente:
+1. **Instalar Dependencias**:
+   - Asegúrate de tener **Python 3.x** instalado.
+   - Crea un entorno virtual para gestionar las dependencias:
+     ```
+     python -m venv venv
+     ```
+   - Activa el entorno virtual:
+     - En Windows:
+       ```
+       venv\Scripts\activate
+       ```
+     - En Linux/macOS:
+       ```
+       source venv/bin/activate
+       ```
+   - Instala las dependencias necesarias que se encuentran en `requirements.txt`:
+     ```
+     pip install -r requirements.txt
+     ```
 
-```plaintext
-spark.master              local[*, 4]
-spark.databricks.cluster.profile  singleNode
-spark.mongodb.output.uri  <output_uri>  # Rellena con la URI de salida para Cosmos DB
-spark.mongodb.input.uri   <input_uri>   # Rellena con la URI de entrada para Cosmos DB
-pruebadbkcosmosdb?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@cosmosaccountcarlos@
-```
+2. **Configurar Variables de Entorno**:
+   - Crea un archivo `.env` para almacenar las credenciales sensibles como la **API Key** de OpenWeather y la cadena de conexión de Cosmos DB:
+     ```
+     API_KEY=tu_api_key_de_openweather
+     COSMOSDB_CONNECTION_STRING=tu_cadena_de_conexion
+     DB_NAME=cosmotestdb01
+     COLLECTION_NAME=pruebadbkcosmosdb
+     ```
 
-Estas configuraciones permiten a Spark interactuar directamente con la base de datos Cosmos DB, facilitando la ingesta y transformación de datos.
+3. **Ejecutar la Aplicación**:
+   - Ejecuta el script para comenzar a recopilar datos meteorológicos y almacenarlos en Cosmos DB:
+     ```
+     python app.py
+     ```
+   - El script obtendrá datos meteorológicos cada 20 segundos y los almacenará en la base de datos de Cosmos DB.
 
-## Consideraciones Finales
-- Asegúrate de tener las credenciales correctas y permisos adecuados configurados en Cosmos DB para evitar problemas de conexión.
-- Utiliza **Partner Connect** para simplificar la integración con Power BI y evitar configuraciones manuales adicionales.
-- Una vez finalizada la utilización, elimina los recursos para evitar cargos innecesarios en Azure.
+### 5. Conectar Databricks con Power BI
 
-Para cualquier duda o consulta adicional, no dudes en contactarme.
+1. **Crear un DataFrame** en Databricks con los datos meteorológicos y almacenar el resultado en el **Hive Metastore**.
+2. **Utilizar Partner Connect** para Power BI desde Databricks:
+   - Ve a **Partner Connect** en Databricks y selecciona **Power BI**.
+   - Descarga el **archivo de conexión** (`.pbids`) y ábrelo con Power BI Desktop.
+   - Utiliza **Azure Active Directory** para autenticarte y cargar los datos en Power BI.
+
+### 6. Visualización de Datos en Power BI
+
+1. En Power BI, carga la tabla (`powerbitable`) y empieza a crear **visualizaciones** interactivas de los datos meteorológicos.
+2. Dedica tiempo a experimentar con diferentes **gráficos** y **plots** para entender mejor los datos.
+
+### 7. Consideraciones Finales
+
+- **Seguridad**: Asegúrate de eliminar las **claves sensibles** del código y utiliza archivos `.env` para proteger las credenciales.
+- **Costos**: Una vez finalizado el proyecto, elimina todos los recursos creados en Azure para evitar cargos innecesarios.
+
+## Recursos Adicionales
+- [OpenWeather API](https://openweathermap.org/api)
+- Documentación oficial de [Azure Cosmos DB](https://docs.microsoft.com/en-us/azure/cosmos-db/)
+- Documentación de [Azure Databricks](https://docs.microsoft.com/en-us/azure/databricks/)
+
+Si tienes alguna duda o necesitas asistencia adicional, no dudes en contactarme.
+
