@@ -68,5 +68,3 @@ Estas configuraciones permiten a Spark interactuar directamente con la base de d
 - Una vez finalizada la utilización, elimina los recursos para evitar cargos innecesarios en Azure.
 
 Para cualquier duda o consulta adicional, no dudes en contactarme.
-
-# carlosalonso99-tajamar-wheather-visualization-cosmos-service-endpoint-dbk-hive-powerbi
